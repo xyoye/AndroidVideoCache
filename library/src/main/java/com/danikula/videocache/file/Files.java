@@ -1,7 +1,6 @@
 package com.danikula.videocache.file;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.danikula.videocache.Log;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,8 +18,6 @@ import java.util.List;
  * @author Alexey Danilov (danikula@gmail.com).
  */
 class Files {
-
-    private static final Logger LOG = LoggerFactory.getLogger("Files");
 
     static void makeDir(File directory) throws IOException {
         if (directory.exists()) {
@@ -53,7 +50,7 @@ class Files {
                 modify(file);
                 if (file.lastModified() < now) {
                     // NOTE: apparently this is a known issue (see: http://stackoverflow.com/questions/6633748/file-lastmodified-is-never-what-was-set-with-file-setlastmodified)
-                    LOG.warn("Last modified date {} is not set for file {}", new Date(file.lastModified()), file.getAbsolutePath());
+                    Log.w("Last modified date " + new Date(file.lastModified()) + " is not set for file " + file.getAbsolutePath());
                 }
             }
         }
@@ -88,7 +85,7 @@ class Files {
         }
 
         private int compareLong(long first, long second) {
-            return (first < second) ? -1 : ((first == second) ? 0 : 1);
+            return Long.compare(first, second);
         }
     }
 
