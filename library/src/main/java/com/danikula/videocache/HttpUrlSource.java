@@ -128,19 +128,17 @@ public class HttpUrlSource implements Source {
     private void fetchContentInfo() throws ProxyCacheException {
         Log.d("Read content info from " + sourceInfo.url);
         HttpURLConnection urlConnection = null;
-        InputStream inputStream = null;
         try {
-            urlConnection = openConnection(0, 10000);
+            //此处仅用于读取文件长度与文件类型，调整请求方法类型为HEAD
+            urlConnection = openConnection(0, 10000, true);
             long length = getContentLength(urlConnection);
             String mime = urlConnection.getContentType();
-            inputStream = urlConnection.getInputStream();
             this.sourceInfo = new SourceInfo(sourceInfo.url, length, mime);
             this.sourceInfoStorage.put(sourceInfo.url, sourceInfo);
             Log.d("Source info fetched: " + sourceInfo);
         } catch (IOException e) {
             Log.e("Error fetching info from " + sourceInfo.url, e);
         } finally {
-            ProxyCacheUtils.close(inputStream);
             if (urlConnection != null) {
                 urlConnection.disconnect();
             }
@@ -148,6 +146,10 @@ public class HttpUrlSource implements Source {
     }
 
     private HttpURLConnection openConnection(long offset, int timeout) throws IOException, ProxyCacheException {
+        return openConnection(offset, timeout, false);
+    }
+
+    private HttpURLConnection openConnection(long offset, int timeout, boolean headerOnly) throws IOException, ProxyCacheException {
         HttpURLConnection connection;
         boolean redirected;
         int redirectCount = 0;
@@ -162,6 +164,9 @@ public class HttpUrlSource implements Source {
             if (timeout > 0) {
                 connection.setConnectTimeout(timeout);
                 connection.setReadTimeout(timeout);
+            }
+            if (headerOnly) {
+                connection.setRequestMethod("HEAD");
             }
             int code = connection.getResponseCode();
             redirected = code == HTTP_MOVED_PERM || code == HTTP_MOVED_TEMP || code == HTTP_SEE_OTHER;
