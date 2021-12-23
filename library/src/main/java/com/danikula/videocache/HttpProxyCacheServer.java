@@ -177,6 +177,12 @@ public class HttpProxyCacheServer {
         }
     }
 
+    public void shutdown(String cacheUrl) {
+        Log.i("Shutdown a proxy server: " + cacheUrl);
+
+        shutdownClient(cacheUrl);
+    }
+
     private boolean isAlive() {
         return pinger.ping(3, 70);   // 70+140+280=max~500ms
     }
@@ -205,6 +211,15 @@ public class HttpProxyCacheServer {
                 clients.shutdown();
             }
             clientsMap.clear();
+        }
+    }
+
+    private void shutdownClient(String cacheUrl) {
+        synchronized (clientsLock) {
+            HttpProxyCacheServerClients client = clientsMap.remove(cacheUrl);
+            if (client != null) {
+                client.shutdown();
+            }
         }
     }
 
@@ -290,7 +305,7 @@ public class HttpProxyCacheServer {
                 socket.shutdownOutput();
             }
         } catch (IOException e) {
-            Log.w("Failed to close socket on proxy side: "+e.getMessage()+". It seems client have already closed connection.");
+            Log.w("Failed to close socket on proxy side: " + e.getMessage() + ". It seems client have already closed connection.");
         }
     }
 
