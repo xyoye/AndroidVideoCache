@@ -19,8 +19,6 @@ import static com.danikula.videocache.ProxyCacheUtils.DEFAULT_BUFFER_SIZE;
  */
 class HttpProxyCache extends ProxyCache {
 
-    private static final float NO_CACHE_BARRIER = .2f;
-
     private final HttpUrlSource source;
     private final FileCache cache;
     private CacheListener listener;
@@ -52,11 +50,12 @@ class HttpProxyCache extends ProxyCache {
         long sourceLength = source.length();
         boolean sourceLengthKnown = sourceLength > 0;
         long cacheAvailable = cache.available();
+        long offset = request.rangeOffset;
         // do not use cache for partial requests which too far from available cache. It seems user seek video.
-        return !sourceLengthKnown || !request.partial || request.rangeOffset <= cacheAvailable + sourceLength * NO_CACHE_BARRIER;
+        return !sourceLengthKnown || !request.partial || isUseCacheByLength(offset, sourceLength, cacheAvailable);
     }
 
-    private String newResponseHeaders(GetRequest request) throws IOException, ProxyCacheException {
+    private String newResponseHeaders(GetRequest request) throws ProxyCacheException {
         String mime = source.getMime();
         boolean mimeKnown = !TextUtils.isEmpty(mime);
         long length = cache.isCompleted() ? cache.available() : source.length();
@@ -108,5 +107,22 @@ class HttpProxyCache extends ProxyCache {
         if (listener != null) {
             listener.onCacheAvailable(cache.file, source.getUrl(), percents);
         }
+    }
+
+    /**
+     * 根据文件长度综合判断是否需要先缓存再播放
+     * 由于弹弹对视频即时播放需求不高，所以缓存值也设的稍高
+     */
+    private boolean isUseCacheByLength(long offset, long length, long cachedLength) {
+        //大于1G的文件，seek在缓存范围外100M，仍然走缓存
+        if (length > 1024 * 1024 * 1024L) {
+            return offset < cachedLength + 100 * 1024 * 1024L;
+        }
+        //大于512M的文件，seek缓存范围外1/10，仍然走缓存
+        if (length > 512 * 1024 * 1024L) {
+            return offset < cachedLength + length * 0.1f;
+        }
+        //其余，seek缓存范围外20M，仍然走缓存
+        return offset < cachedLength + 20 * 1024* 1024L;
     }
 }
