@@ -1,10 +1,14 @@
 package com.danikula.videocache;
 
+import static com.danikula.videocache.Preconditions.checkNotNull;
+
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 
 import com.danikula.videocache.file.FileCache;
+import com.danikula.videocache.source.Source;
+import com.danikula.videocache.source.SourceFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,8 +16,6 @@ import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static com.danikula.videocache.Preconditions.checkNotNull;
 
 /**
  * Client for {@link HttpProxyCacheServer}
@@ -27,11 +29,11 @@ final class HttpProxyCacheServerClients {
     private volatile HttpProxyCache proxyCache;
     private final List<CacheListener> listeners = new CopyOnWriteArrayList<>();
     private final CacheListener uiCacheListener;
-    private final Config config;
+    private final SourceFactory sourceFactory;
 
-    public HttpProxyCacheServerClients(String url, Config config) {
+    public HttpProxyCacheServerClients(String url, SourceFactory sourceFactory) {
         this.url = checkNotNull(url);
-        this.config = checkNotNull(config);
+        this.sourceFactory = sourceFactory;
         this.uiCacheListener = new UiListenerHandler(url, listeners);
     }
 
@@ -79,7 +81,8 @@ final class HttpProxyCacheServerClients {
     }
 
     private HttpProxyCache newHttpProxyCache() throws ProxyCacheException {
-        HttpUrlSource source = new HttpUrlSource(url, config.sourceInfoStorage, config.headerInjector);
+        Source source = sourceFactory.createSource(url);
+        Config config = sourceFactory.config;
         FileCache cache = new FileCache(config.generateCacheFile(url), config.diskUsage);
         HttpProxyCache httpProxyCache = new HttpProxyCache(source, cache);
         httpProxyCache.registerCacheListener(uiCacheListener);

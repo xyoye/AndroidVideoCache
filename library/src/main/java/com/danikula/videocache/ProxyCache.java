@@ -4,6 +4,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.danikula.videocache.Preconditions.checkNotNull;
 
+import com.danikula.videocache.source.Source;
+
 /**
  * Proxy for {@link Source} with caching support ({@link Cache}).
  * <p/>
@@ -13,7 +15,7 @@ import static com.danikula.videocache.Preconditions.checkNotNull;
  *
  * @author Alexey Danilov (danikula@gmail.com).
  */
-class ProxyCache {
+public class ProxyCache {
 
     private static final int MAX_READ_SOURCE_ATTEMPTS = 1;
 

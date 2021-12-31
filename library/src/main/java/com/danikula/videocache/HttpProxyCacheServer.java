@@ -1,5 +1,8 @@
 package com.danikula.videocache;
 
+import static com.danikula.videocache.Preconditions.checkAllNotNull;
+import static com.danikula.videocache.Preconditions.checkNotNull;
+
 import android.content.Context;
 import android.net.Uri;
 
@@ -10,6 +13,8 @@ import com.danikula.videocache.file.TotalCountLruDiskUsage;
 import com.danikula.videocache.file.TotalSizeLruDiskUsage;
 import com.danikula.videocache.headers.EmptyHeadersInjector;
 import com.danikula.videocache.headers.HeaderInjector;
+import com.danikula.videocache.source.HttpUrlSourceFactory;
+import com.danikula.videocache.source.SourceFactory;
 import com.danikula.videocache.sourcestorage.SourceInfoStorage;
 import com.danikula.videocache.sourcestorage.SourceInfoStorageFactory;
 
@@ -26,8 +31,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.danikula.videocache.Preconditions.checkAllNotNull;
-import static com.danikula.videocache.Preconditions.checkNotNull;
 
 /**
  * Simple lightweight proxy server with file caching support that handles HTTP requests.
@@ -60,13 +63,11 @@ public class HttpProxyCacheServer {
     private final Thread waitConnectionThread;
     private final Config config;
     private final Pinger pinger;
+    private final SourceFactory sourceFactory;
 
-    public HttpProxyCacheServer(Context context) {
-        this(new Builder(context).buildConfig());
-    }
-
-    private HttpProxyCacheServer(Config config) {
-        this.config = checkNotNull(config);
+    private HttpProxyCacheServer(SourceFactory sourceFactory) {
+        this.sourceFactory = sourceFactory;
+        this.config = sourceFactory.config;
         try {
             InetAddress inetAddress = InetAddress.getByName(PROXY_HOST);
             this.serverSocket = new ServerSocket(0, 8, inetAddress);
@@ -76,7 +77,7 @@ public class HttpProxyCacheServer {
             this.waitConnectionThread = new Thread(new WaitRequestsRunnable(startSignal));
             this.waitConnectionThread.start();
             startSignal.await(); // freeze thread, wait for server starts
-            this.pinger = new Pinger(PROXY_HOST, port);
+            this.pinger = new Pinger(PROXY_HOST, port, sourceFactory);
             Log.i("Proxy cache server started. Is it alive? " + isAlive());
         } catch (IOException | InterruptedException e) {
             socketProcessor.shutdown();
@@ -262,7 +263,7 @@ public class HttpProxyCacheServer {
         synchronized (clientsLock) {
             HttpProxyCacheServerClients clients = clientsMap.get(url);
             if (clients == null) {
-                clients = new HttpProxyCacheServerClients(url, config);
+                clients = new HttpProxyCacheServerClients(url, sourceFactory);
                 clientsMap.put(url, clients);
             }
             return clients;
@@ -364,6 +365,7 @@ public class HttpProxyCacheServer {
         private DiskUsage diskUsage;
         private SourceInfoStorage sourceInfoStorage;
         private HeaderInjector headerInjector;
+        private SourceFactory sourceFactory;
 
         public Builder(Context context) {
             this.sourceInfoStorage = SourceInfoStorageFactory.newSourceInfoStorage(context);
@@ -371,6 +373,7 @@ public class HttpProxyCacheServer {
             this.diskUsage = new TotalSizeLruDiskUsage(DEFAULT_MAX_SIZE);
             this.fileNameGenerator = new Md5FileNameGenerator();
             this.headerInjector = new EmptyHeadersInjector();
+            this.sourceFactory = new HttpUrlSourceFactory();
         }
 
         /**
@@ -452,14 +455,19 @@ public class HttpProxyCacheServer {
             return this;
         }
 
+        public Builder sourceFactory(SourceFactory factory) {
+            this.sourceFactory = factory;
+            return this;
+        }
+
         /**
          * Builds new instance of {@link HttpProxyCacheServer}.
          *
          * @return proxy cache. Only single instance should be used across whole app.
          */
         public HttpProxyCacheServer build() {
-            Config config = buildConfig();
-            return new HttpProxyCacheServer(config);
+            sourceFactory.initConfig(buildConfig());
+            return new HttpProxyCacheServer(sourceFactory);
         }
 
         private Config buildConfig() {

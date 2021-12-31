@@ -12,7 +12,7 @@ import java.io.File;
  *
  * @author Alexey Danilov (danikula@gmail.com).
  */
-class Config {
+public class Config {
 
     public final File cacheRoot;
     public final FileNameGenerator fileNameGenerator;

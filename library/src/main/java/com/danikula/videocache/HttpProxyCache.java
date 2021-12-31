@@ -3,6 +3,7 @@ package com.danikula.videocache;
 import android.text.TextUtils;
 
 import com.danikula.videocache.file.FileCache;
+import com.danikula.videocache.source.Source;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -19,11 +20,11 @@ import static com.danikula.videocache.ProxyCacheUtils.DEFAULT_BUFFER_SIZE;
  */
 class HttpProxyCache extends ProxyCache {
 
-    private final HttpUrlSource source;
+    private final Source source;
     private final FileCache cache;
     private CacheListener listener;
 
-    public HttpProxyCache(HttpUrlSource source, FileCache cache) {
+    public HttpProxyCache(Source source, FileCache cache) {
         super(source, cache);
         this.cache = cache;
         this.source = source;
@@ -83,7 +84,7 @@ class HttpProxyCache extends ProxyCache {
     }
 
     private void responseWithoutCache(OutputStream out, long offset) throws ProxyCacheException, IOException {
-        HttpUrlSource newSourceNoCache = new HttpUrlSource(this.source);
+        Source newSourceNoCache = source.cloneNew();
         try {
             newSourceNoCache.open((int) offset);
             byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];

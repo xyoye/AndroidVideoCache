@@ -21,6 +21,9 @@ import static com.danikula.videocache.Preconditions.checkArgument;
 import static com.danikula.videocache.Preconditions.checkNotNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.danikula.videocache.source.Source;
+import com.danikula.videocache.source.SourceFactory;
+
 /**
  * Pings {@link HttpProxyCacheServer} to make sure it works.
  *
@@ -35,10 +38,12 @@ class Pinger {
     private final ExecutorService pingExecutor = Executors.newSingleThreadExecutor();
     private final String host;
     private final int port;
+    private final SourceFactory sourceFactory;
 
-    Pinger(String host, int port) {
+    Pinger(String host, int port, SourceFactory sourceFactory) {
         this.host = checkNotNull(host);
         this.port = port;
+        this.sourceFactory = sourceFactory;
     }
 
     boolean ping(int maxAttempts, int startTimeout) {
@@ -91,7 +96,7 @@ class Pinger {
 
     private boolean pingServer() throws ProxyCacheException {
         String pingUrl = getPingUrl();
-        HttpUrlSource source = new HttpUrlSource(pingUrl);
+        Source source = sourceFactory.createSource(pingUrl);
         try {
             byte[] expectedResponse = PING_RESPONSE.getBytes();
             source.open(0);

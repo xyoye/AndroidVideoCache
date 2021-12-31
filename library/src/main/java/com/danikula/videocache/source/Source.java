@@ -1,4 +1,6 @@
-package com.danikula.videocache;
+package com.danikula.videocache.source;
+
+import com.danikula.videocache.ProxyCacheException;
 
 /**
  * Source for proxy.
@@ -22,6 +24,12 @@ public interface Source {
      * @throws ProxyCacheException if error occur while fetching source data.
      */
     long length() throws ProxyCacheException;
+
+    String getMime() throws ProxyCacheException;
+
+    String getUrl();
+
+    Source cloneNew();
 
     /**
      * Read data to byte buffer from source with current offset.
